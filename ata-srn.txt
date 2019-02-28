@@ -1,0 +1,13 @@
+https://www2.comprasnet.gov.br/siasgnet-atasrp/public/pesquisarItemSRP.do?funcaoRetorno=&parametro.identificacaoCompra.numeroUasg=158361&parametro.uasg.numeroUasg=158361&casoDeUsoOrigem=&parametro.identificacaoCompra.numeroCompra=00001&parametro.identificacaoCompra.anoCompra=2018&parametro.codigosModalidadeCompra=1&numeroPagina=1&parametro.uasg.nome=&parametro.identificacaoCompra.modalidadeCompra=5&method=consultarPorFiltro&parametro.anoLicitacao=2018&parametro.numeroLicitacao=00001
+
+https://www2.comprasnet.gov.br/siasgnet-atasrp/public/pesquisarItemSRP.do?method=iniciar&parametro.identificacaoCompra.numeroUasg=158361&parametro.identificacaoCompra.modalidadeCompra=5&parametro.identificacaoCompra.numeroCompra=00001&parametro.identificacaoCompra.anoCompra=2018
+
+
+
+https://www2.comprasnet.gov.br/siasgnet-atasrp/public/pesquisarItemSRP.do?funcaoRetorno=&parametro.identificacaoCompra.numeroUasg=158361&parametro.uasg.numeroUasg=158361&casoDeUsoOrigem=&parametro.identificacaoCompra.numeroCompra=00001&parametro.identificacaoCompra.anoCompra=2018&parametro.codigosModalidadeCompra=1&numeroPagina=1&parametro.uasg.nome=&parametro.identificacaoCompra.modalidadeCompra=5&method=consultarPorFiltro&parametro.anoLicitacao=2018&parametro.numeroLicitacao=00001
+
+
+https://www2.comprasnet.gov.br/siasgnet-atasrp/public/visualizarItemSRP.do?method=iniciar&itemAtaSRP.codigoItemAtaSRP=33175073
+
+
+https://www2.comprasnet.gov.br/siasgnet-atasrp/public/visualizarItemSRP.do?method=iniciar&itemAtaSRP.codigoItemAtaSRP=33175083
