@@ -11,3 +11,39 @@ https://www2.comprasnet.gov.br/siasgnet-atasrp/public/visualizarItemSRP.do?metho
 
 
 https://www2.comprasnet.gov.br/siasgnet-atasrp/public/visualizarItemSRP.do?method=iniciar&itemAtaSRP.codigoItemAtaSRP=33175083
+
+
+
+# TELA PESQUISA
+https://www2.comprasnet.gov.br/siasgnet-atasrp/public/pesquisarLicitacaoSRP.do?method=pesquisar
+
+POST:
+URI: 
+https://www2.comprasnet.gov.br/siasgnet-atasrp/public/pesquisarLicitacaoSRP.do?method=pesquisar
+PARAMS:
+- casoDeUsoOrigem=
+- funcaoRetorno=
+- parametro.uasg.numeroUasg=158718
+- parametro.uasg.nome=
+- parametro.numeroLicitacao=3
+- parametro.anoLicitacao=2020
+
+curl 'https://www2.comprasnet.gov.br/siasgnet-atasrp/public/pesquisarLicitacaoSRP.do?method=pesquisar' \
+  --data 'casoDeUsoOrigem=&funcaoRetorno=&parametro.uasg.numeroUasg=158718&parametro.uasg.nome=&parametro.numeroLicitacao=3&parametro.anoLicitacao=2020'
+
+
+
+# TELA LISTA DE ITENS DA ATA
+https://www2.comprasnet.gov.br/siasgnet-atasrp/public/pesquisarItemSRP.do?method=iniciar&parametro.identificacaoCompra.numeroUasg=154618&parametro.identificacaoCompra.modalidadeCompra=5&parametro.identificacaoCompra.numeroCompra=00003&parametro.identificacaoCompra.anoCompra=2020
+
+method=iniciar
+parametro.identificacaoCompra.numeroUasg=154618
+parametro.identificacaoCompra.modalidadeCompra=5
+parametro.identificacaoCompra.numeroCompra=00003
+parametro.identificacaoCompra.anoCompra=2020
+
+# TELA VISUALIZAR ITEM
+https://www2.comprasnet.gov.br/siasgnet-atasrp/public/visualizarItemSRP.do?method=iniciar&itemAtaSRP.codigoItemAtaSRP=35982301
+
+method=iniciar
+itemAtaSRP.codigoItemAtaSRP=35982301
