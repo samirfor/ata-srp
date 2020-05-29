@@ -35,6 +35,7 @@ def is_last_page parse_page
 end
 
 def items_extract parse_page
+  items = []
   table = parse_page.xpath('//*[@id="item"]/tbody/tr')
 
   table.each do |row|
@@ -44,7 +45,7 @@ def items_extract parse_page
     supply_unit = row.at_xpath('td[5]').text.strip
     item_id = row.at_xpath('td[6]/a').attributes["href"].value.split('(')[1].split(')')[0]
 
-    $items << [item_num, material_type, description, supply_unit, item_id]
+    items << [item_num, material_type, description, supply_unit, item_id]
   end
   print "."
   items
@@ -72,7 +73,7 @@ puts
 puts "extraindo items: "
 
 unless not is_last_page(parse_page) do
-  items_extract(parse_page)
+  items += items_extract(parse_page)
 end
 
 
