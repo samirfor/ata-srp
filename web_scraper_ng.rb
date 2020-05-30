@@ -157,7 +157,7 @@ puts 'gerando planilha...'
 CSV.open(
   "PE#{$numero_compra}#{$ano_compra}.UASG.#{$uasg}.csv", 'wb',
   {
-    :col_sep => ';',
+    :col_sep => ',',
     :force_quotes => true,
     :strip => true
   }
