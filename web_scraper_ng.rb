@@ -59,6 +59,20 @@ $uasg = options[:uasg]
 HTTParty::Basement.default_options.update(verify: false)
 $stdout.sync = true
 
+def paginated?(parse_page)
+  breturn=true
+  begin
+    get_actual_page(parse_page)
+  rescue => exception
+    if $debug
+      puts
+      puts 'Apenas uma página de itens ou erro de licitação inexistente.' 
+    end
+    breturn=false
+  end
+  breturn
+end
+
 def get_actual_page(parse_page)
   Integer(parse_page.xpath('//*[@id="corpo"]/form/div/span[2]/strong').text.strip)
 end
@@ -68,14 +82,9 @@ def get_last_page(parse_page)
 end
 
 def last_page?(parse_page)
-  begin
-    actual_page = get_actual_page(parse_page)
-  rescue StandardError => e
-    puts
-    puts 'ERRO: A licitação informada não existe.'
-    exit
-  end
+  return true if not paginated?(parse_page)
 
+  actual_page = get_actual_page(parse_page)
   last_page = get_last_page(parse_page)
   if $debug
     puts
@@ -115,11 +124,13 @@ def items_extract(parse_page)
     item_id = row.at_xpath('td[6]/a').attributes['href'].value.split('(')[1].split(')')[0]
 
     details = details_item_extract(item_id)
-    puts
     print '.'
     print item_num + '.' + details.to_s if $debug
+    puts if $debug
 
     items << {
+      'pregao' => "#{$numero_compra}/#{$ano_compra}",
+      'uasg gerenciadora' => $uasg,
       'item' => item_num,
       'tipo material' => material_type,
       'descricao' => description,
@@ -156,7 +167,7 @@ puts 'gerando planilha...'
 
 CSV.open(
   "PE#{$numero_compra}#{$ano_compra}.UASG.#{$uasg}.csv", 'wb',
-  {
+  **{
     :col_sep => ',',
     :force_quotes => true,
     :strip => true
