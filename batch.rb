@@ -4,7 +4,7 @@
 require 'csv'
 require 'optparse'
 
-Options = Struct.new(:file, :debug)
+Options = Struct.new(:file, :debug, :delta)
 
 class Parser
   def self.parse(options)
@@ -21,6 +21,10 @@ class Parser
         args.file = u
       end
 
+      opts.on('--delta', 'Ignora os pregões que já foram capturados') do |u|
+        args.delta = u
+      end
+
       opts.on('-d', '--debug', 'Mostra mais mensagens') do |u|
         args.debug = u
       end
@@ -34,7 +38,7 @@ class Parser
     opt_parser.parse!(options)
 
     args.each_pair do |name, value|
-      if name != :debug && value.nil?
+      if name != :debug && name != :delta && value.nil?
         puts opt_parser
         exit
       end
@@ -46,18 +50,11 @@ end
 options = Parser.parse(ARGV)
 
 $debug = options[:debug] # verbosity
+$delta = options[:delta]
 $file = options[:file]
 $stdout.sync = true
 $output_filename = "#{$file}.dados.#{Time.now.strftime('%F-%H%M')}.csv"
 debugmode = "-d" if $debug
-
-def process(input)
-  puts "Start process: #{input}"
-
-
-
-  puts "Done with: #{input}"
-end
 
 threads = []
 
@@ -65,6 +62,11 @@ puts
 puts "Lendo #{$file} iniciando em #{Time.now}"
 
 CSV.foreach($file, **{headers: :first_row, converters: :numeric, :encoding => 'UTF-8'}) do |row|
+  pe_file = "PE#{row[0]}#{row[1]}.UASG.#{row[2]}.csv"
+  if $delta && File.exist?(pe_file) && File.size(pe_file) > 0
+    puts "Modo delta ativado. Pulando: #{pe_file} já existe."
+    next
+  end
   threads << Thread.new{
     system("ruby web_scraper_ng.rb --ano=#{row[1]} --compra=#{row[0]} --uasg=#{row[2]} #{debugmode}")
   }

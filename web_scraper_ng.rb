@@ -109,11 +109,12 @@ def details_item_extract(codigo_item_ata_srp)
     'saldo_para_empenho' => parse_page.xpath('//*[@name="itemAtaSRP.informacoesSIASG.quantidadeSaldoDisponivelEmpenhoParticipantes"]/@value').text.strip.to_i,
     'saldo_para_adesao' => parse_page.xpath('//*[@name="itemAtaSRP.saldoDisponivelAdesao"]/@value').text.strip.to_i,
     'fim_vigencia' => parse_page.xpath('//*[@name="itemAtaSRP.resultado.dataFimVigenciaAta"]/@value').text.strip,
+    'valor_unit_homologado' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[6]').text.strip,
+    'valor_unit_negociado' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[7]').text.strip,
     'cnpj' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[2]').text.strip[0..17],
     'fornecedor' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[2]').text.strip[21..-1],
     'marca' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[3]').text.strip,
-    'valor_unit_homologado' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[6]').text.strip,
-    'valor_unti_negociado' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[7]').text.strip,
+    'descricao_detalhada' => parse_page.xpath('//*[@name="cabecalhoItemSRP.descricaoDetalhadaItem"]').text.strip.gsub("\n", ' ').gsub("\r", ' ').squeeze(' '),
   }
   details
 end
