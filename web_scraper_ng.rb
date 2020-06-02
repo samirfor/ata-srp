@@ -56,6 +56,7 @@ $modalidade_compra = 5 # 5=pregao
 $numero_compra = options[:compra]
 $ano_compra = options[:ano]
 $uasg = options[:uasg]
+$filenameoutput = "PE#{$numero_compra}#{$ano_compra}.UASG.#{$uasg}.csv"
 HTTParty::Basement.default_options.update(verify: false)
 $stdout.sync = true
 
@@ -107,7 +108,12 @@ def details_item_extract(codigo_item_ata_srp)
     'qtd_empenhada' => Integer(parse_page.xpath('//*[@id="uasgItemSRP"]/tbody/tr[1]/td[4]').text.strip.to_i),
     'saldo_para_empenho' => parse_page.xpath('//*[@name="itemAtaSRP.informacoesSIASG.quantidadeSaldoDisponivelEmpenhoParticipantes"]/@value').text.strip.to_i,
     'saldo_para_adesao' => parse_page.xpath('//*[@name="itemAtaSRP.saldoDisponivelAdesao"]/@value').text.strip.to_i,
-    'fim_vigencia' => parse_page.xpath('//*[@name="itemAtaSRP.resultado.dataFimVigenciaAta"]/@value').text.strip
+    'fim_vigencia' => parse_page.xpath('//*[@name="itemAtaSRP.resultado.dataFimVigenciaAta"]/@value').text.strip,
+    'cnpj' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[2]').text.strip[0..17],
+    'fornecedor' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[2]').text.strip[21..-1],
+    'marca' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[3]').text.strip,
+    'valor_unit_homologado' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[6]').text.strip.sub!(',','.').to_f,
+    'valor_unti_negociado' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[7]').text.strip,
   }
   details
 end
@@ -148,7 +154,7 @@ end
 items = []
 pagenumber = 1
 puts
-puts 'extraindo itens: '
+puts "Extraindo itens do PE #{$numero_compra}/#{$ano_compra} UASG #{$uasg} ... "
 puts
 loop do
   puts url_items(pagenumber) if $debug
@@ -160,13 +166,8 @@ loop do
   break if last_page?(parse_page) # or pagenumber > 1
 end
 
-# p items if $debug
-
-puts
-puts 'gerando planilha...'
-
 CSV.open(
-  "PE#{$numero_compra}#{$ano_compra}.UASG.#{$uasg}.csv", 'wb',
+  $filenameoutput, 'wb',
   **{
     :col_sep => ',',
     :force_quotes => true,
@@ -181,4 +182,4 @@ CSV.open(
 end
 
 puts
-puts 'concluído!'
+puts "PE #{$numero_compra}/#{$ano_compra} UASG #{$uasg} concluído! Gerado arquivo #{$filenameoutput}"

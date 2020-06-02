@@ -1,1 +1,3 @@
 *.csv
+
+!pregoes_test.csv
