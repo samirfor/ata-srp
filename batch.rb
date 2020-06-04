@@ -4,7 +4,7 @@
 require 'csv'
 require 'optparse'
 
-Options = Struct.new(:file, :debug, :delta)
+Options = Struct.new(:file, :debug, :delta, :termohomologacao, :anexos)
 
 class Parser
   def self.parse(options)
@@ -23,6 +23,14 @@ class Parser
 
       opts.on('--delta', 'Ignora os pregões que já foram capturados') do |u|
         args.delta = u
+      end
+
+      opts.on('-t', '--termohomologacao', 'Baixa o PDF do Termo de Homologacao do pregão') do |u|
+        args.termo_homologacao = u
+      end
+
+      opts.on('-p', '--anexos', 'Baixa os anexos dos itens do pregão') do |u|
+        args.anexos = u
       end
 
       opts.on('-d', '--debug', 'Mostra mais mensagens') do |u|
@@ -52,9 +60,10 @@ options = Parser.parse(ARGV)
 $debug = options[:debug] # verbosity
 $delta = options[:delta]
 $file = options[:file]
+$anexos = options[:anexos]
+$termo_homologacao = options[:termo_homologacao]
 $stdout.sync = true
 $output_filename = "#{$file}.dados.#{Time.now.strftime('%F-%H%M')}.csv"
-debugmode = "-d" if $debug
 
 threads = []
 
@@ -68,7 +77,11 @@ CSV.foreach($file, **{headers: :first_row, converters: :numeric, :encoding => 'U
     next
   end
   threads << Thread.new{
-    system("ruby web_scraper_ng.rb --ano=#{row[1]} --compra=#{row[0]} --uasg=#{row[2]} #{debugmode}")
+    params = String.new
+    params += " -d " if $debug
+    params += " -t " if $termo_homologacao
+    params += " -p " if $anexos
+    system("ruby web_scraper_ng.rb --ano=#{row[1]} --compra=#{row[0]} --uasg=#{row[2]} #{params} ")
   }
 end
 puts "#{$file} lido com sucesso! Processando..."

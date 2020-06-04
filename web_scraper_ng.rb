@@ -5,8 +5,9 @@ require 'httparty'
 require 'nokogiri'
 require 'csv'
 require 'optparse'
+require 'wicked_pdf' # dep: wkhtmltopdf
 
-Options = Struct.new(:compra, :ano, :uasg, :debug)
+Options = Struct.new(:compra, :ano, :uasg, :debug, :termo_homologacao, :anexos)
 
 class Parser
   def self.parse(options)
@@ -27,6 +28,14 @@ class Parser
         args.uasg = u
       end
 
+      opts.on('-t', '--termohomologacao', 'Baixa o PDF do Termo de Homologacao do pregão') do |u|
+        args.termo_homologacao = u
+      end
+
+      opts.on('-p', '--anexos', 'Baixa os anexos dos itens do pregão') do |u|
+        args.anexos = u
+      end
+
       opts.on('-d', '--debug', 'Mostra mais mensagens') do |u|
         args.debug = u
       end
@@ -40,7 +49,10 @@ class Parser
     opt_parser.parse!(options)
 
     args.each_pair do |name, value|
-      if name != :debug && value.nil?
+      if name != :debug && \
+          name != :termo_homologacao && \
+          name != :anexos && \
+          value.nil?
         puts opt_parser
         exit
       end
@@ -56,7 +68,11 @@ $modalidade_compra = 5 # 5=pregao
 $numero_compra = options[:compra]
 $ano_compra = options[:ano]
 $uasg = options[:uasg]
-$filenameoutput = "PE#{$numero_compra}#{$ano_compra}.UASG.#{$uasg}.csv"
+$anexos = options[:anexos]
+$termo_homologacao = options[:termo_homologacao]
+$prgcod = nil
+$numprp = "#{$numero_compra}#{$ano_compra}"
+$basefilenameoutput = "PE#{$numero_compra}#{$ano_compra}.UASG.#{$uasg}"
 HTTParty::Basement.default_options.update(verify: false)
 $stdout.sync = true
 
@@ -119,6 +135,24 @@ def details_item_extract(codigo_item_ata_srp)
   details
 end
 
+def get_prgcod
+  if $prgcod.nil?
+    url = "http://comprasnet.gov.br/livre/pregao/ata2.asp?co_no_uasg=#{$uasg}&numprp=#{$numprp}"
+    puts url if $debug
+    page = HTTParty.get(url)
+    parse_page = Nokogiri::HTML(page)
+    begin
+      prgcod = parse_page.xpath('//*[@name="termodehomologacao"]/@onclick').text.strip.split(',')[0].split('(')[1]
+    rescue => exception
+      puts 'Error: ' + parse_page.xpath('//span[@class="mensagem"]').text.strip
+      exit
+    end
+  else
+    prgcod = $prgcod
+  end
+  prgcod
+end
+
 def items_extract(parse_page)
   items = []
   table = parse_page.xpath('//*[@id="item"]/tbody/tr')
@@ -152,8 +186,145 @@ def url_items(pagenumber)
   "https://www2.comprasnet.gov.br/siasgnet-atasrp/public/pesquisarItemSRP.do?method=consultarPorFiltro&parametro.identificacaoCompra.numeroUasg=#{$uasg}&parametro.identificacaoCompra.modalidadeCompra=#{$modalidade_compra}&parametro.identificacaoCompra.numeroCompra=#{$numero_compra}&parametro.identificacaoCompra.anoCompra=#{$ano_compra}&numeroPagina=#{pagenumber}"
 end
 
+def download_termo_homologacao
+  pdf_file = "#{$basefilenameoutput}.Termo.Homologacao.pdf"
+  pdf = WickedPdf.new.pdf_from_url("http://comprasnet.gov.br/livre/pregao/termohom.asp?prgcod=#{get_prgcod()}&tipo=t")
+  File.open(pdf_file, 'wb') do |file|
+    file << pdf
+  end
+  pdf_file
+end
+
+def get_items_attachments
+  # pág. anexos dos itens
+  url = "http://comprasnet.gov.br/livre/pregao/anexosDosItens.asp?uasg=#{$uasg}&numprp=#{$numprp}&prgcod=#{get_prgcod()}"
+  page = HTTParty.get(url)
+  parse_page = Nokogiri::HTML(page)
+  puts url if $debug
+  tr = parse_page.xpath('//tr')
+  items = []
+  tr.each do |row|
+    begin
+      cnpj = row.at_xpath('./td[1]').text.strip
+      razao_social = row.at_xpath('./td[2]').text.strip
+      url = row.at_xpath('.//a/@href').value
+      filename = row.at_xpath('.//a').text.strip
+      ipa_cod = url.split('ipaCod=')[1].split('&')[0]
+   
+      items << {
+        'cnpj': cnpj,
+        'razao_social': razao_social,
+        'url': url,
+        'filename': filename,
+        'tipo': row.at_xpath('./td[3]').text.strip,
+        'enviado_em': row.at_xpath('./td[4]').text.strip,
+        'ipa_cod': ipa_cod
+      }
+    rescue
+      # ignore trash
+    end
+  end
+  items
+end
+
+def get_items_proposals
+  # pág. anexos de proposta/habilitação
+  url = "http://comprasnet.gov.br/livre/pregao/anexosPropostaHabilitacao.asp?prgCod=#{get_prgcod()}"
+  page = HTTParty.get(url)
+  parse_page = Nokogiri::HTML(page)
+  puts url if $debug
+  tr = parse_page.xpath('//tr')
+  items = []
+  tr.each do |row|
+    begin
+      fornecedor = row.at_xpath('./td[1]').text.strip
+      cnpj = fornecedor.split(' - ')[0]
+      razao_social = fornecedor.split(' - ')[1]
+      url = row.at_xpath('.//a/@href').value
+      filename = row.at_xpath('.//a').text.strip
+      pa_cod = url.split('paCod=')[1].split('&')[0]
+   
+      items << {
+        'cnpj': cnpj,
+        'razao_social': razao_social,
+        'url': url,
+        'filename': filename,
+        'tipo': row.at_xpath('./td[3]').text.strip,
+        'enviado_em': row.at_xpath('./td[4]').text.strip,
+        'pa_cod': pa_cod
+      }
+    rescue
+      # ignore trash
+    end
+  end
+  items
+end
+
+def download_file(url, filename)
+  puts "Download #{filename} ..."
+  puts "Download #{url} ..." if $debug
+  File.open(filename, "wb") do |file|
+    HTTParty.get(url, {stream_body: true, follow_redirects: true}) do |fragment|
+      if [301, 302].include?(fragment.code)
+        print "skip writing for redirect" if $debug
+      elsif fragment.code == 200
+        print "." if $debug
+        file.write(fragment)
+      else
+        raise StandardError, "Non-success status code while streaming #{fragment.code}"
+      end
+    end
+  end
+  puts
+  puts "Download #{filename} concluído!"
+end
+
+def download_curl(url, filename)
+  puts "Download #{filename} ..."
+  puts "Download #{url} ..." if $debug
+  system("curl -LC- -o \"#{filename}\" -- \"#{url}\"")
+  puts
+  puts "Download #{filename} concluído!"
+end
+
+
+
 items = []
 pagenumber = 1
+
+if $termo_homologacao
+  puts
+  puts "Baixando Termo de Homologacao do PE #{$numero_compra}/#{$ano_compra} UASG #{$uasg} ... "
+  termo_homologacao_pdf_file = download_termo_homologacao()
+  puts "Termo de Homologacao concluído: #{termo_homologacao_pdf_file}"
+  exit
+end
+
+if $anexos
+  puts
+  puts "Baixando propostas/habilitação do PE #{$numero_compra}/#{$ano_compra} UASG #{$uasg} ... "
+  threads = []
+  get_items_proposals.each do |item|
+    threads << Thread.new{
+      p item if $debug
+      download_curl("http://comprasnet.gov.br/livre/pregao/#{item[:url]}", "#{$basefilenameoutput}.#{item[:cnpj].delete("^0-9")}.#{item[:filename]}")
+    }
+  end
+  threads.each{|t| t.join}
+  puts
+  puts "Baixando anexos dos itens do PE #{$numero_compra}/#{$ano_compra} UASG #{$uasg} ... "
+  threads = []
+  get_items_attachments.each do |item|
+    threads << Thread.new{
+      p item if $debug
+      download_curl("http://comprasnet.gov.br/livre/pregao/#{item[:url]}", "#{$basefilenameoutput}.#{item[:cnpj].delete("^0-9")}.#{item[:filename]}")
+    }
+  end
+  threads.each{|t| t.join}
+  puts "Download dos anexos concluído!"
+  exit
+end
+
 puts
 puts "Extraindo itens do PE #{$numero_compra}/#{$ano_compra} UASG #{$uasg} ... "
 puts
@@ -168,10 +339,10 @@ loop do
 end
 
 CSV.open(
-  $filenameoutput, 'wb',
+  "#{basefilenameoutput}.csv", 'wb',
   **{
     :col_sep => ',',
-    :force_quotes => true,
+    # :force_quotes => true,
     :strip => true
   }
 ) do |csv|
@@ -183,4 +354,4 @@ CSV.open(
 end
 
 puts
-puts "PE #{$numero_compra}/#{$ano_compra} UASG #{$uasg} concluído! Gerado arquivo #{$filenameoutput}"
+puts "PE #{$numero_compra}/#{$ano_compra} UASG #{$uasg} concluído! Gerado arquivo #{basefilenameoutput}.csv"
