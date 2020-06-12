@@ -26,7 +26,7 @@ class Parser
       end
 
       opts.on('-t', '--termohomologacao', 'Baixa o PDF do Termo de Homologacao do pregão') do |u|
-        args.termo_homologacao = u
+        args.termohomologacao = u
       end
 
       opts.on('-p', '--anexos', 'Baixa os anexos dos itens do pregão') do |u|
@@ -46,7 +46,11 @@ class Parser
     opt_parser.parse!(options)
 
     args.each_pair do |name, value|
-      if name != :debug && name != :delta && value.nil?
+      if name != :debug && \
+          name != :termohomologacao && \
+          name != :anexos && \
+          name != :delta && \
+          value.nil?
         puts opt_parser
         exit
       end
@@ -61,7 +65,7 @@ $debug = options[:debug] # verbosity
 $delta = options[:delta]
 $file = options[:file]
 $anexos = options[:anexos]
-$termo_homologacao = options[:termo_homologacao]
+$termohomologacao = options[:termohomologacao]
 $stdout.sync = true
 $output_filename = "#{$file}.dados.#{Time.now.strftime('%F-%H%M')}.csv"
 
@@ -79,7 +83,7 @@ CSV.foreach($file, **{headers: :first_row, converters: :numeric, :encoding => 'U
   threads << Thread.new{
     params = String.new
     params += " -d " if $debug
-    params += " -t " if $termo_homologacao
+    params += " -t " if $termohomologacao
     params += " -p " if $anexos
     system("ruby web_scraper_ng.rb --ano=#{row[1]} --compra=#{row[0]} --uasg=#{row[2]} #{params} ")
   }

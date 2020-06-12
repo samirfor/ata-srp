@@ -81,9 +81,10 @@ def paginated?(parse_page)
   begin
     get_actual_page(parse_page)
   rescue => exception
-    if $debug
+    if parse_page.xpath('//*[@id="mensagensSistema"]/div').text.include?('licitação informada não existe')
       puts
-      puts 'Apenas uma página de itens ou erro de licitação inexistente.' 
+      puts "AVISO: Licitação #{$basefilenameoutput} inexistente."
+      exit
     end
     breturn=false
   end
@@ -339,11 +340,12 @@ loop do
 end
 
 CSV.open(
-  "#{basefilenameoutput}.csv", 'wb',
+  "#{$basefilenameoutput}.csv", 'wb',
   **{
     :col_sep => ',',
     # :force_quotes => true,
-    :strip => true
+    :strip => true,
+    :encoding => 'UTF-8'
   }
 ) do |csv|
   csv << items[0].keys # csv header
@@ -354,4 +356,4 @@ CSV.open(
 end
 
 puts
-puts "PE #{$numero_compra}/#{$ano_compra} UASG #{$uasg} concluído! Gerado arquivo #{basefilenameoutput}.csv"
+puts "PE #{$numero_compra}/#{$ano_compra} UASG #{$uasg} concluído! Gerado arquivo #{$basefilenameoutput}.csv"
