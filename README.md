@@ -7,10 +7,10 @@ TL;DR
 ---------
 
 ```shell
-docker run -v "$PWD:/usr/src/app" samirfor/ata-srp web_scraper_ng.rb -h # show usage
-docker run -v "$PWD:/usr/src/app" samirfor/ata-srp web_scraper_ng.rb --compra 02 --ano 2019 --uasg 154618 -d # PE n. 02/2019 UASG 154618
+docker run -v "$PWD:/usr/src/app" samirfor/ata-srp ruby web_scraper_ng.rb -h # show usage
+docker run -v "$PWD:/usr/src/app" samirfor/ata-srp ruby web_scraper_ng.rb --compra 02 --ano 2019 --uasg 154618 -d # PE n. 02/2019 UASG 154618
 # batch mode
-docker run -v "$PWD:/usr/src/app" samirfor/ata-srp batch.rb --file pregoes_test.csv
+docker run -v "$PWD:/usr/src/app" samirfor/ata-srp ruby batch.rb --file pregoes_test.csv
 ```
 
 Docker
