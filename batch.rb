@@ -106,7 +106,7 @@ CSV.open(
 ) do |csv|
   CSV.foreach($file, **{headers: :first_row, converters: :numeric, :encoding => 'UTF-8'}) do |row|
     pe_file = "PE#{row[0]}#{row[1]}.UASG.#{row[2]}.csv"
-    next if File.exist?(pe_file) || File.size(pe_file) < 1
+    next if !File.exist?(pe_file) || File.size(pe_file) < 1
     CSV.foreach(pe_file, **{headers: :first_row, converters: :numeric, :encoding => 'UTF-8'}) do |row|
       csv << row
     end
