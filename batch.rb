@@ -4,7 +4,7 @@
 require 'csv'
 require 'optparse'
 
-Options = Struct.new(:file, :debug, :delta, :termohomologacao, :anexos)
+Options = Struct.new(:file, :debug, :delta, :termohomologacao, :anexos, :parallel)
 
 class Parser
   def self.parse(options)
@@ -33,6 +33,10 @@ class Parser
         args.anexos = u
       end
 
+      opts.on('-x', '--parallel', 'Extração de itens em paralelo. Agiliza o processo.') do |u|
+        args.parallel = u
+      end
+
       opts.on('-d', '--debug', 'Mostra mais mensagens') do |u|
         args.debug = u
       end
@@ -50,6 +54,7 @@ class Parser
           name != :termohomologacao && \
           name != :anexos && \
           name != :delta && \
+          name != :parallel && \
           value.nil?
         puts opt_parser
         exit
@@ -66,6 +71,7 @@ $delta = options[:delta]
 $file = options[:file]
 $anexos = options[:anexos]
 $termohomologacao = options[:termohomologacao]
+$parallel = options[:parallel]
 $stdout.sync = true
 $output_filename = "#{$file}.dados.#{Time.now.strftime('%F-%H%M')}.csv"
 
@@ -85,6 +91,7 @@ CSV.foreach($file, **{headers: :first_row, converters: :numeric, :encoding => 'U
     params += " -d " if $debug
     params += " -t " if $termohomologacao
     params += " -p " if $anexos
+    params += " -x " if $parallel
     system("ruby web_scraper_ng.rb --ano=#{row[1]} --compra=#{row[0]} --uasg=#{row[2]} #{params} ")
   }
 end

@@ -7,7 +7,7 @@ require 'csv'
 require 'optparse'
 require 'wicked_pdf' # dep: wkhtmltopdf
 
-Options = Struct.new(:compra, :ano, :uasg, :debug, :termo_homologacao, :anexos)
+Options = Struct.new(:compra, :ano, :uasg, :debug, :termo_homologacao, :anexos, :parallel)
 
 class Parser
   def self.parse(options)
@@ -36,6 +36,10 @@ class Parser
         args.anexos = u
       end
 
+      opts.on('-x', '--parallel', 'Extração de itens em paralelo. Agiliza o processo.') do |u|
+        args.parallel = u
+      end
+
       opts.on('-d', '--debug', 'Mostra mais mensagens') do |u|
         args.debug = u
       end
@@ -52,6 +56,7 @@ class Parser
       if name != :debug && \
           name != :termo_homologacao && \
           name != :anexos && \
+          name != :parallel && \
           value.nil?
         puts opt_parser
         exit
@@ -70,6 +75,7 @@ $ano_compra = options[:ano]
 $uasg = options[:uasg]
 $anexos = options[:anexos]
 $termo_homologacao = options[:termo_homologacao]
+$parallel = options[:parallel]
 $prgcod = nil
 $numprp = "#{$numero_compra}#{$ano_compra}"
 $basefilenameoutput = "PE#{$numero_compra}#{$ano_compra}.UASG.#{$uasg}"
@@ -156,6 +162,7 @@ end
 
 def items_extract(parse_page)
   items = []
+  threads = []
   table = parse_page.xpath('//*[@id="item"]/tbody/tr')
 
   table.each do |row|
@@ -164,22 +171,41 @@ def items_extract(parse_page)
     description = row.at_xpath('td[3]').text.strip
     supply_unit = row.at_xpath('td[5]').text.strip
     item_id = row.at_xpath('td[6]/a').attributes['href'].value.split('(')[1].split(')')[0]
+    if $parallel
+      threads << Thread.new {
+        details = details_item_extract(item_id)
+        print '.'
+        print item_num + '.' + details.to_s if $debug
+        puts if $debug
 
-    details = details_item_extract(item_id)
-    print '.'
-    print item_num + '.' + details.to_s if $debug
-    puts if $debug
+        items << {
+          'pregao' => "#{$numero_compra}/#{$ano_compra}",
+          'uasg gerenciadora' => $uasg,
+          'item' => item_num,
+          'tipo material' => material_type,
+          'descricao' => description,
+          'unidade fornecimento' => supply_unit,
+          'codigoItemAtaSRP' => item_id
+        }.merge!(details)
+      }
+    else
+      details = details_item_extract(item_id)
+      print '.'
+      print item_num + '.' + details.to_s if $debug
+      puts if $debug
 
-    items << {
-      'pregao' => "#{$numero_compra}/#{$ano_compra}",
-      'uasg gerenciadora' => $uasg,
-      'item' => item_num,
-      'tipo material' => material_type,
-      'descricao' => description,
-      'unidade fornecimento' => supply_unit,
-      'codigoItemAtaSRP' => item_id
-    }.merge!(details)
+      items << {
+        'pregao' => "#{$numero_compra}/#{$ano_compra}",
+        'uasg gerenciadora' => $uasg,
+        'item' => item_num,
+        'tipo material' => material_type,
+        'descricao' => description,
+        'unidade fornecimento' => supply_unit,
+        'codigoItemAtaSRP' => item_id
+      }.merge!(details)
+    end
   end
+  threads.each{|t| t.join} if $parallel
   items
 end
 
