@@ -1,10 +1,12 @@
-FROM ruby:2.7
+FROM ruby:2.6
 
 WORKDIR /usr/src/app
 
 RUN apt update && apt install -y wkhtmltopdf
 
 COPY Gemfile* ./
+
+RUN gem install bundler
 
 RUN bundle install
 
