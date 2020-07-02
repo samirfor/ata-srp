@@ -81,6 +81,7 @@ $numprp = "#{$numero_compra}#{$ano_compra}"
 $basefilenameoutput = "PE#{$numero_compra}#{$ano_compra}.UASG.#{$uasg}"
 HTTParty::Basement.default_options.update(verify: false)
 $stdout.sync = true
+MAX_ATTEMPTS = 20
 
 def paginated?(parse_page)
   breturn=true
@@ -121,22 +122,60 @@ def last_page?(parse_page)
   false
 end
 
+def html_get(url)
+  page = nil
+  attempts = 0
+
+  puts url if $debug
+
+  begin
+    page = HTTParty.get(url)
+  rescue Exception => ex
+    puts
+    puts "Error: #{ex}" if $debug
+    attempts = attempts + 1
+    print 'F'
+    sleep 5
+    retry if(attempts < MAX_ATTEMPTS)
+  end
+
+  if(page.nil?)
+    puts
+    puts "Error: #{url} falhou #{MAX_ATTEMPTS} vezes. Parando #{$numero_compra}/#{$ano_compra} UASG #{$uasg}."
+    exit
+  end
+  page
+end
+
 def details_item_extract(codigo_item_ata_srp)
-  page = HTTParty.get('https://www2.comprasnet.gov.br/siasgnet-atasrp/public/visualizarItemSRP.do?method=iniciar' \
-    '&itemAtaSRP.codigoItemAtaSRP=' + codigo_item_ata_srp)
+  url = 'https://www2.comprasnet.gov.br/siasgnet-atasrp/public/visualizarItemSRP.do?method=iniciar' \
+    '&itemAtaSRP.codigoItemAtaSRP=' + codigo_item_ata_srp
+
+  page = html_get(url)
   parse_page = Nokogiri::HTML(page)
 
   details = {
-    'qtd_homologada' => Integer(parse_page.xpath('//*[@id="uasgItemSRP"]/tbody/tr[1]/td[4]').text.strip.to_i),
-    'qtd_empenhada' => Integer(parse_page.xpath('//*[@id="uasgItemSRP"]/tbody/tr[1]/td[4]').text.strip.to_i),
-    'saldo_para_empenho' => parse_page.xpath('//*[@name="itemAtaSRP.informacoesSIASG.quantidadeSaldoDisponivelEmpenhoParticipantes"]/@value').text.strip.to_i,
+    'qtd_homologada' => parse_page.xpath('//*[@name="itemAtaSRP.informacoesSIASG.quantidadeHomolgadaItem"]/@value').text.strip.to_i,
+    'data_assinatura_ata' => parse_page.xpath('//*[@name="itemAtaSRP.resultado.dataAssinaturaAta"]/@value').text.strip,
+    'fim_vigencia_ata' => parse_page.xpath('//*[@name="itemAtaSRP.resultado.dataFimVigenciaAta"]/@value').text.strip,
+
+    'qtd_contratada_participantes' => parse_page.xpath('//*[@name="itemAtaSRP.informacoesSIASG.quantidadeContratadaItemParticipantes"]/@value').text.strip.to_i,
+    'qtd_empenhada_participantes' => parse_page.xpath('//*[@name="itemAtaSRP.informacoesSIASG.quantidadeEmpenhaItemParticipantes"]/@value').text.strip.to_i,
+    'saldo_contratacao_participantes' => parse_page.xpath('//*[@name="itemAtaSRP.informacoesSIASG.quantidadeSaldoDisponivelContratacaoParticipantes"]/@value').text.strip.to_i,
+    'saldo_empenho_participantes' => parse_page.xpath('//*[@name="itemAtaSRP.informacoesSIASG.quantidadeSaldoDisponivelEmpenhoParticipantes"]/@value').text.strip.to_i,
+
+    'qtd_maxima_adesoes' => parse_page.xpath('//*[@name="itemAtaSRP.quantidadeMaximaParaAdesoes"]/@value').text.strip.to_i,
+    'qtd_aguardando_autorizacao_caronas' => parse_page.xpath('//*[@name="itemAtaSRP.quantitativoAdesao.quantidadeAguardandoAutorizacao"]/@value').text.strip.to_i,
+    'qtd_autorizada_caronas' => parse_page.xpath('//*[@name="itemAtaSRP.quantitativoAdesao.quantidadeAutorizada"]/@value').text.strip.to_i,
+    'qtd_contratada_caronas' => parse_page.xpath('//*[@name="itemAtaSRP.informacoesSIASG.quantidadeContratadaItemCaronas"]/@value').text.strip.to_i,
+    'qtd_empenhada_caronas' => parse_page.xpath('//*[@name="itemAtaSRP.informacoesSIASG.quantidadeEmpenhadaItemCaronas"]/@value').text.strip.to_i,
     'saldo_para_adesao' => parse_page.xpath('//*[@name="itemAtaSRP.saldoDisponivelAdesao"]/@value').text.strip.to_i,
-    'fim_vigencia' => parse_page.xpath('//*[@name="itemAtaSRP.resultado.dataFimVigenciaAta"]/@value').text.strip,
-    'valor_unit_homologado' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[6]').text.strip,
-    'valor_unit_negociado' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[7]').text.strip,
-    'cnpj' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[2]').text.strip[0..17],
-    'fornecedor' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[2]').text.strip[21..-1],
-    'marca' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr/td[3]').text.strip,
+
+    'valor_unit_homologado' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr[1]/td[6]').text.strip[/([0-9]{1,3}(\.[0-9]{3})*,[0-9]+)/],
+    'valor_unit_negociado' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr[1]/td[7]').text.strip[/([0-9]{1,3}(\.[0-9]{3})*,[0-9]+)/],
+    'cnpj' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr[1]/td[2]').text.strip[0..17], # regex \d{2}\.\d{3}\.\d{3}\/\d{4}\-\d{2}
+    'fornecedor' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr[1]/td[2]').text.strip[21..-1],
+    'marca' => parse_page.xpath('//*[@id="fornecedorSRP"]/tbody/tr[1]/td[3]').text.strip,
     'descricao_detalhada' => parse_page.xpath('//*[@name="cabecalhoItemSRP.descricaoDetalhadaItem"]').text.strip.gsub("\n", ' ').gsub("\r", ' ').squeeze(' '),
   }
   details
@@ -145,9 +184,10 @@ end
 def get_prgcod
   if $prgcod.nil?
     url = "http://comprasnet.gov.br/livre/pregao/ata2.asp?co_no_uasg=#{$uasg}&numprp=#{$numprp}"
-    puts url if $debug
-    page = HTTParty.get(url)
+
+    page = html_get(url)
     parse_page = Nokogiri::HTML(page)
+  
     begin
       prgcod = parse_page.xpath('//*[@name="termodehomologacao"]/@onclick').text.strip.split(',')[0].split('(')[1]
     rescue => exception
@@ -209,10 +249,6 @@ def items_extract(parse_page)
   items
 end
 
-def url_items(pagenumber)
-  "https://www2.comprasnet.gov.br/siasgnet-atasrp/public/pesquisarItemSRP.do?method=consultarPorFiltro&parametro.identificacaoCompra.numeroUasg=#{$uasg}&parametro.identificacaoCompra.modalidadeCompra=#{$modalidade_compra}&parametro.identificacaoCompra.numeroCompra=#{$numero_compra}&parametro.identificacaoCompra.anoCompra=#{$ano_compra}&numeroPagina=#{pagenumber}"
-end
-
 def download_termo_homologacao
   pdf_file = "#{$basefilenameoutput}.Termo.Homologacao.pdf"
   pdf = WickedPdf.new.pdf_from_url("http://comprasnet.gov.br/livre/pregao/termohom.asp?prgcod=#{get_prgcod()}&tipo=t")
@@ -225,9 +261,10 @@ end
 def get_items_attachments
   # pág. anexos dos itens
   url = "http://comprasnet.gov.br/livre/pregao/anexosDosItens.asp?uasg=#{$uasg}&numprp=#{$numprp}&prgcod=#{get_prgcod()}"
-  page = HTTParty.get(url)
+
+  page = html_get(url)
   parse_page = Nokogiri::HTML(page)
-  puts url if $debug
+  
   tr = parse_page.xpath('//tr')
   items = []
   tr.each do |row|
@@ -257,9 +294,10 @@ end
 def get_items_proposals
   # pág. anexos de proposta/habilitação
   url = "http://comprasnet.gov.br/livre/pregao/anexosPropostaHabilitacao.asp?prgCod=#{get_prgcod()}"
-  page = HTTParty.get(url)
+
+  page = html_get(url)
   parse_page = Nokogiri::HTML(page)
-  puts url if $debug
+
   tr = parse_page.xpath('//tr')
   items = []
   tr.each do |row|
@@ -314,7 +352,7 @@ def download_curl(url, filename)
   puts "Download #{filename} concluído!"
 end
 
-
+###########
 
 items = []
 pagenumber = 1
@@ -356,9 +394,11 @@ puts
 puts "Extraindo itens do PE #{$numero_compra}/#{$ano_compra} UASG #{$uasg} ... "
 puts
 loop do
-  puts url_items(pagenumber) if $debug
-  page = HTTParty.get(url_items(pagenumber))
+  url = "https://www2.comprasnet.gov.br/siasgnet-atasrp/public/pesquisarItemSRP.do?method=consultarPorFiltro&parametro.identificacaoCompra.numeroUasg=#{$uasg}&parametro.identificacaoCompra.modalidadeCompra=#{$modalidade_compra}&parametro.identificacaoCompra.numeroCompra=#{$numero_compra}&parametro.identificacaoCompra.anoCompra=#{$ano_compra}&numeroPagina=#{pagenumber}"
+
+  page = html_get(url)
   parse_page = Nokogiri::HTML(page)
+
   items += items_extract(parse_page)
   pagenumber += 1
   print '.'
