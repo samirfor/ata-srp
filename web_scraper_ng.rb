@@ -131,7 +131,7 @@ def html_get(url)
   begin
     page = HTTParty.get(url)
   rescue Exception => ex
-    puts
+    puts if $debug
     puts "Error: #{ex}" if $debug
     attempts = attempts + 1
     print 'F'
