@@ -155,6 +155,8 @@ def details_item_extract(codigo_item_ata_srp)
   parse_page = Nokogiri::HTML(page)
 
   details = {
+    'uasg gerenciadora formatada' => parse_page.xpath('//*[@name="cabecalhoLicitacaoSRP.uasgGerenciadora.uasgFormatada"]/@value').text.strip,
+
     'qtd_homologada' => parse_page.xpath('//*[@name="itemAtaSRP.informacoesSIASG.quantidadeHomolgadaItem"]/@value').text.strip.to_i,
     'data_assinatura_ata' => parse_page.xpath('//*[@name="itemAtaSRP.resultado.dataAssinaturaAta"]/@value').text.strip,
     'fim_vigencia_ata' => parse_page.xpath('//*[@name="itemAtaSRP.resultado.dataFimVigenciaAta"]/@value').text.strip,
